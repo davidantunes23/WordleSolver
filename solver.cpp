@@ -247,7 +247,7 @@ int main() {
         
         cout << "Top guesses by expected information gain:" << endl;
         for (size_t i = 0; i < suggestions.size(); i++) {
-            cout << i << ": " << suggestions[i].second << " (entropy: " << suggestions[i].first << ")" << endl;
+            cout << i + 1 << ": " << suggestions[i].second << " (entropy: " << suggestions[i].first << ")" << endl;
         }
 
         string guess = promptGuess();
