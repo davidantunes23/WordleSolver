@@ -1,0 +1,1 @@
+Compilation: g++ -O2 -std=c++17 -march=native -Wall -Wextra -o solver solver.cpp

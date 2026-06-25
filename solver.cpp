@@ -4,6 +4,7 @@ using namespace std;
 #include <iostream>
 #include <string>
 #include <vector>
+#include <array>
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -14,16 +15,16 @@ const int YELLOW = 1;
 const int GREEN = 2;
 const int SUGGESTION_NUM = 10;
 
-vector<int> patterns_for_guess(const string& guess, const vector<string>& candidate_words, const vector<vector<int>>& candidate_letter_counts) {
-    vector<int> pattern_counts(PATTERN_NUM, 0);
+array<int, PATTERN_NUM> patterns_for_guess(const string& guess, const vector<string>& candidate_words, const vector<array<int, 26>>& candidate_letter_counts) {
+    array<int, PATTERN_NUM> pattern_counts{};
 
     for (size_t i = 0; i < candidate_words.size(); ++i) {
         const string& candidate = candidate_words[i];
-        vector<int> letter_count = candidate_letter_counts[i];
-        vector<int> pattern(5, GREY);
+        array<int, 26> letter_count = candidate_letter_counts[i];
+        array<int, 5> pattern{};
 
         // Pass 1: lock in greens and consume those letters from the count.
-        for (int j = 0; j < 5; j++) {
+        for (size_t j = 0; j < 5; j++) {
             if (guess[j] == candidate[j]) {
                 pattern[j] = GREEN;
                 letter_count[guess[j] - 'a']--;
@@ -31,7 +32,7 @@ vector<int> patterns_for_guess(const string& guess, const vector<string>& candid
         }
 
         // Pass 2: assign yellows from whatever letters remain.
-        for (int j = 0; j < 5; j++) {
+        for (size_t j = 0; j < 5; j++) {
             if (pattern[j] != GREEN && letter_count[guess[j] - 'a'] > 0) {
                 pattern[j] = YELLOW;
                 letter_count[guess[j] - 'a']--;
@@ -42,7 +43,7 @@ vector<int> patterns_for_guess(const string& guess, const vector<string>& candid
 
         int pattern_index = 0;
         int multiplier = 1;
-        for (int j = 0; j < 5; j++) {
+        for (size_t j = 0; j < 5; j++) {
             pattern_index += pattern[j] * multiplier;
             multiplier *= 3;
         }
@@ -53,9 +54,9 @@ vector<int> patterns_for_guess(const string& guess, const vector<string>& candid
     return pattern_counts;
 }
 
-float computeGuessEntropy(const string& guess, const vector<string>& candidate_words, const vector<vector<int>>& candidate_letter_counts, size_t num_candidates) {
+float computeGuessEntropy(const string& guess, const vector<string>& candidate_words, const vector<array<int, 26>>& candidate_letter_counts, size_t num_candidates) {
     float entropy = 0.0f;
-    vector<int> pattern_counts = patterns_for_guess(guess, candidate_words, candidate_letter_counts);
+    array<int, PATTERN_NUM> pattern_counts = patterns_for_guess(guess, candidate_words, candidate_letter_counts);
     for (int count : pattern_counts) {
         if (count > 0) {
             float probability = static_cast<float>(count) / num_candidates;
@@ -65,7 +66,7 @@ float computeGuessEntropy(const string& guess, const vector<string>& candidate_w
     return entropy;
 }
 
-vector<pair<float, string>> rankGuesses(const vector<string>& all_words, const vector<string>& candidate_words, const vector<vector<int>>& candidate_letter_counts, int num_suggestions) {
+vector<pair<float, string>> rankGuesses(const vector<string>& all_words, const vector<string>& candidate_words, const vector<array<int, 26>>& candidate_letter_counts, int num_suggestions) {
     vector<pair<float, string>> scored_words;
     size_t num_candidates = candidate_words.size();
 
@@ -103,8 +104,9 @@ vector<string> readFile(const string& filename) {
     return words;
 }
 
-vector<vector<int>> getLetterCounts(vector<string>& words) {
-    vector<vector<int>> letter_counts(words.size(), vector<int>(26, 0));
+vector<array<int, 26>> getLetterCounts(vector<string>& words) {
+    vector<array<int, 26>> letter_counts(words.size());
+    for (auto& counts : letter_counts) counts.fill(0);
 
     for (size_t i = 0; i < words.size(); ++i) {
         for (char c : words[i]) {
@@ -166,18 +168,18 @@ vector<int> promptPattern() {
     }
 }
 
-void filter_candidates(const string& guess, const vector<int>& pattern_digits, vector<string>& candidate_words, vector<vector<int>>& candidate_letter_counts) {
+void filter_candidates(const string& guess, const vector<int>& pattern_digits, vector<string>& candidate_words, vector<array<int, 26>>& candidate_letter_counts) {
     vector<string> new_candidates;
-    vector<vector<int>> new_letter_counts;
+    vector<array<int, 26>> new_letter_counts;
 
     for (size_t i = 0; i < candidate_words.size(); ++i) {
         const string& candidate = candidate_words[i];
-        vector<int> letter_count = candidate_letter_counts[i];
+        array<int, 26> letter_count = candidate_letter_counts[i];
 
         bool matches = true;
 
         // Pass 1: greens must match exactly; consume those letters from the count.
-        for (int j = 0; j < 5 && matches; j++) {
+        for (size_t j = 0; j < 5 && matches; j++) {
             if (pattern_digits[j] == GREEN) {
                 if (guess[j] != candidate[j]) {
                     matches = false;
@@ -190,7 +192,7 @@ void filter_candidates(const string& guess, const vector<int>& pattern_digits, v
         // Pass 2: yellows must not be in the same position and must have a
         // remaining occurrence to claim. Decrement so later greys/yellows see
         // the correct leftover count.
-        for (int j = 0; j < 5 && matches; j++) {
+        for (size_t j = 0; j < 5 && matches; j++) {
             if (pattern_digits[j] == YELLOW) {
                 if (guess[j] == candidate[j] || letter_count[guess[j] - 'a'] <= 0) {
                     matches = false;
@@ -202,7 +204,7 @@ void filter_candidates(const string& guess, const vector<int>& pattern_digits, v
 
         // Pass 3: greys are only valid if no occurrences of that letter remain
         // after greens and yellows have claimed theirs.
-        for (int j = 0; j < 5 && matches; j++) {
+        for (size_t j = 0; j < 5 && matches; j++) {
             if (pattern_digits[j] == GREY && letter_count[guess[j] - 'a'] > 0) {
                 matches = false;
             }
@@ -220,10 +222,10 @@ void filter_candidates(const string& guess, const vector<int>& pattern_digits, v
 
 int main() {
     vector<string> words = readFile("valid-wordle-words.txt");
-    vector<vector<int>> letter_counts = getLetterCounts(words);
+    vector<array<int, 26>> letter_counts = getLetterCounts(words);
 
     vector<string> candidate_words = words;
-    vector<vector<int>> candidate_letter_counts = letter_counts;
+    vector<array<int, 26>> candidate_letter_counts = letter_counts;
 
     int round = 1;
 
@@ -240,7 +242,7 @@ int main() {
         vector<pair<float, string>> suggestions = rankGuesses(words, candidate_words, candidate_letter_counts, SUGGESTION_NUM);
         
         cout << "Top guesses by expected information gain:" << endl;
-        for (int i = 0; i < suggestions.size(); i++) {
+        for (size_t i = 0; i < suggestions.size(); i++) {
             cout << i << ": " << suggestions[i].second << " (entropy: " << suggestions[i].first << ")" << endl;
         }
 
