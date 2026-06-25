@@ -54,13 +54,14 @@ array<int, PATTERN_NUM> patterns_for_guess(const string& guess, const vector<str
     return pattern_counts;
 }
 
-float computeGuessEntropy(const string& guess, const vector<string>& candidate_words, const vector<array<int, 26>>& candidate_letter_counts, size_t num_candidates) {
+float computeGuessEntropy(const string& guess, const vector<string>& candidate_words, const vector<array<int, 26>>& candidate_letter_counts, size_t num_candidates, const vector<float>& log2_table) {
     float entropy = 0.0f;
     array<int, PATTERN_NUM> pattern_counts = patterns_for_guess(guess, candidate_words, candidate_letter_counts);
+    float log2N = log2_table[num_candidates];
     for (int count : pattern_counts) {
         if (count > 0) {
             float probability = static_cast<float>(count) / num_candidates;
-            entropy -= probability * log2(probability);
+            entropy -= probability * (log2_table[count] - log2N);
         }
     }
     return entropy;
@@ -70,8 +71,11 @@ vector<pair<float, string>> rankGuesses(const vector<string>& all_words, const v
     vector<pair<float, string>> scored_words;
     size_t num_candidates = candidate_words.size();
 
+    vector<float> log2_table(num_candidates + 1);
+    for (size_t c = 1; c <= num_candidates; ++c) log2_table[c] = log2((float)c);
+
     for (const auto& guess : all_words) {
-        float entropy = computeGuessEntropy(guess, candidate_words, candidate_letter_counts, num_candidates);
+        float entropy = computeGuessEntropy(guess, candidate_words, candidate_letter_counts, num_candidates, log2_table);
         scored_words.emplace_back(entropy, guess);
     }
 
@@ -104,7 +108,7 @@ vector<string> readFile(const string& filename) {
     return words;
 }
 
-vector<array<int, 26>> getLetterCounts(vector<string>& words) {
+vector<array<int, 26>> getLetterCounts(const vector<string>& words) {
     vector<array<int, 26>> letter_counts(words.size());
     for (auto& counts : letter_counts) counts.fill(0);
 
