@@ -226,10 +226,8 @@ void filter_candidates(const string& guess, const vector<int>& pattern_digits, v
 
 int main() {
     vector<string> words = readFile("valid-wordle-words.txt");
-    vector<array<int, 26>> letter_counts = getLetterCounts(words);
-
-    vector<string> candidate_words = words;
-    vector<array<int, 26>> candidate_letter_counts = letter_counts;
+    vector<string> candidate_words = readFile("shuffled_real_wordles.txt");
+    vector<array<int, 26>> candidate_letter_counts = getLetterCounts(candidate_words);
 
     int round = 1;
 
